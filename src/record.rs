@@ -37,9 +37,12 @@ pub enum Record {
     Set(OsString, OsString),
     Erase(OsString),
     Cd(OsString),
+    /// Every bash function and alias fish may call, replacing the previous list.
+    Commands(Vec<OsString>),
 }
 
-/// What fish must change so its exported environment and directory match bash's.
+/// What fish must change so its exported environment and directory match bash's, and
+/// the bash commands it can call.
 pub fn diff(before: impl IntoIterator<Item = (OsString, OsString)>, after: Dump) -> Vec<Record> {
     let before: BTreeMap<OsString, OsString> = before.into_iter().collect();
     let after_environ: BTreeMap<OsString, OsString> = after.environ.into_iter().collect();
@@ -58,16 +61,30 @@ pub fn diff(before: impl IntoIterator<Item = (OsString, OsString)>, after: Dump)
             records.push(Record::Erase(name.clone()));
         }
     }
+
+    let mut commands: Vec<OsString> = after
+        .commands
+        .into_iter()
+        .filter(|name| is_callable(name))
+        .collect();
+    commands.sort();
+    commands.dedup();
+    records.push(Record::Commands(commands));
     records
 }
 
 pub fn encode(records: &[Record]) -> Vec<u8> {
     let mut bytes = Vec::new();
     for record in records {
+        let joined;
         let (op, name, value): (&str, &OsStr, &OsStr) = match record {
             Record::Set(name, value) => ("set", name, value),
             Record::Erase(name) => ("erase", name, OsStr::new("")),
             Record::Cd(path) => ("cd", OsStr::new(""), path),
+            Record::Commands(names) => {
+                joined = names.join(OsStr::new("\n"));
+                ("commands", OsStr::new(""), &joined)
+            }
         };
         for field in [OsStr::new(op), name, value] {
             bytes.extend_from_slice(field.as_bytes());
@@ -95,6 +112,18 @@ fn is_synced(name: &OsStr) -> bool {
             .any(|prefix| name.starts_with(prefix))
 }
 
+/// Whether fish can define a function of this name that runs it in bash. Fish refuses
+/// a leading `-` and a `/`; the rest are kept to characters bash names use in practice,
+/// and never a newline, which separates the names in the record.
+fn is_callable(name: &OsStr) -> bool {
+    let name = name.as_bytes();
+    name.first().is_some_and(|&b| b != b'-')
+        && !name.starts_with(b"__gill")
+        && name
+            .iter()
+            .all(|&b| b.is_ascii_alphanumeric() || b"_-.:+@,".contains(&b))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -110,15 +139,20 @@ mod tests {
         Dump {
             cwd: cwd.into(),
             environ: environ(pairs),
+            commands: Vec::new(),
         }
     }
 
+    fn no_commands() -> Record {
+        Record::Commands(Vec::new())
+    }
+
     #[test]
-    fn unchanged_environment_needs_no_records() {
+    fn unchanged_environment_needs_no_changes() {
         let before = environ(&[("PWD", "/a"), ("HOME", "/h")]);
         assert_eq!(
             diff(before, dump("/a", &[("PWD", "/a"), ("HOME", "/h")])),
-            []
+            [no_commands()]
         );
     }
 
@@ -136,6 +170,7 @@ mod tests {
                 Record::Set("ADD".into(), "y".into()),
                 Record::Set("EDIT".into(), "new".into()),
                 Record::Erase("GONE".into()),
+                no_commands(),
             ]
         );
     }
@@ -153,7 +188,36 @@ mod tests {
                 ("1X", "x"),
             ],
         );
-        assert_eq!(diff(before, after), []);
+        assert_eq!(diff(before, after), [no_commands()]);
+    }
+
+    #[test]
+    fn only_names_fish_can_define_are_callable() {
+        let mut after = dump("/a", &[]);
+        after.commands = [
+            "tool",
+            "ll",
+            "tool_ls",
+            "a.b",
+            "foo::bar",
+            "-x",
+            "a/b",
+            "__gill_save",
+            "two\nlines",
+            "tool",
+        ]
+        .into_iter()
+        .map(OsString::from)
+        .collect();
+        assert_eq!(
+            diff(environ(&[("PWD", "/a")]), after),
+            [Record::Commands(
+                ["a.b", "foo::bar", "ll", "tool", "tool_ls"]
+                    .into_iter()
+                    .map(OsString::from)
+                    .collect()
+            )]
+        );
     }
 
     #[test]
@@ -162,7 +226,11 @@ mod tests {
             Record::Cd("/tmp".into()),
             Record::Set("A".into(), "x\ny'".into()),
             Record::Erase("B".into()),
+            Record::Commands(vec!["ll".into(), "tool".into()]),
         ];
-        assert_eq!(encode(&records), b"cd\0\0/tmp\0set\0A\0x\ny'\0erase\0B\0\0");
+        assert_eq!(
+            encode(&records),
+            b"cd\0\0/tmp\0set\0A\0x\ny'\0erase\0B\0\0commands\0\0ll\ntool\0"
+        );
     }
 }

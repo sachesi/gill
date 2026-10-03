@@ -7,11 +7,12 @@ two recipes. The tests need bash and fish installed, and run both for real.
 
 - `src/run.rs` starts bash for one command and turns what it left behind into records.
 - `src/session.rs` owns the private directory under `$XDG_RUNTIME_DIR/gill/`.
-- `src/dump.rs` reads the environment bash writes after the command, `src/record.rs`
-  diffs it against fish's and encodes the changes fish applies.
+- `src/dump.rs` reads what bash writes after the command: its directory, environment
+  and the names of its functions and aliases. `src/record.rs` diffs that against fish's
+  environment and encodes the changes fish applies.
 - `shell/prelude.bash` is the bash side: restore the snapshot, run the command, save.
-- `shell/gill.fish` is what `gill init fish` prints: routing, the Enter binding, and the
-  function that applies the records.
+- `shell/gill.fish` is what `gill init fish` prints: routing, the Enter binding, the
+  function that applies the records, and the fish functions standing in for bash ones.
 
 ## Before changing the tricky parts
 

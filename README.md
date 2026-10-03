@@ -4,8 +4,9 @@ gill lets you type bash at a fish prompt. When you press Enter on a line that fi
 cannot run, such as a `for ...; do ...; done` loop, a `FOO=bar` assignment or a
 `source venv/bin/activate`, gill runs it in bash instead and brings the exported
 variables and the working directory back into fish. Bash functions, aliases, plain
-variables and shell options carry over from one bash line to the next, so the functions
-`source ./tools.sh` defines are still there for the next line sent to bash.
+variables and shell options carry over from one bash line to the next. Fish can call
+bash functions and aliases too, so a function from `source ./tools.sh` can be typed at
+the prompt.
 
 Lines are never translated. Bash runs what you typed, so it behaves exactly as it would
 in bash.
@@ -29,6 +30,12 @@ bash.
 
 fish has no `unset`, `declare`, `shopt`, `local` or `readonly`. gill defines them as
 functions that run the bash builtin and keep its result.
+
+After each bash line, every bash function and alias whose name fish does not already
+know gets a fish function of the same name. It runs that one command in bash with the
+arguments fish expanded, so it works in fish pipelines and scripts and returns the bash
+command's status. A name that is already a fish function, builtin or command is left to
+fish.
 
 On screen, a bash line shows as `__gill_run_line # <your line>`. History stores the line
 you typed.
@@ -55,8 +62,7 @@ Then load gill from `~/.config/fish/config.fish`:
 ## What does not carry over
 
 Each bash line runs in a fresh bash that restores the state the previous line left, so
-background jobs, traps and coprocesses end with the line that started them. Bash
-functions and aliases stay on the bash side: fish cannot call them, and a bash line
+background jobs, traps and coprocesses end with the line that started them. A bash line
 cannot call fish functions. Variables flow back to fish only if they are exported.
 
 If you define your own `fish_should_add_to_history`, it decides about the

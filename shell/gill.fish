@@ -71,9 +71,34 @@ function __gill_apply
                 set -eg -- $name
             case cd
                 cd -- $value
+            case commands
+                __gill_define_commands (string split -n \n -- $value)
         end
         set i (math $i + 3)
     end
+end
+
+# The functions gill defined so fish can call bash functions and aliases.
+set -g __gill_commands
+
+# Gives each bash function and alias fish does not know itself a fish function that
+# runs that one command in bash, and removes the ones bash no longer has.
+function __gill_define_commands
+    for name in $__gill_commands
+        contains -- $name $argv; or functions -e -- $name
+    end
+    set -l defined
+    for name in $argv
+        if contains -- $name $__gill_commands
+            set -a defined $name
+        else if not type -q -- $name
+            function $name --description 'Run the bash function or alias of this name'
+                __gill_bash -- (status current-function) $argv
+            end
+            set -a defined $name
+        end
+    end
+    set -g __gill_commands $defined
 end
 
 function __gill_run_line

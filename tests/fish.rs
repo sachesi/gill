@@ -129,3 +129,41 @@ fn exit_status_reaches_fish() {
     let output = fish(&runtime, "__gill_bash -c 'exit 4'; echo $status", &[]);
     assert_eq!(stdout(&output), "4\n");
 }
+
+#[test]
+fn bash_functions_and_aliases_are_callable_from_fish() {
+    let runtime = runtime();
+    let output = fish(
+        &runtime,
+        "__gill_bash -c 'gill_greet() { echo \"hello $1\"; return 5; }; alias gill_shout=\"echo LOUD\"'
+         gill_greet 'big world'; echo $status
+         gill_shout quiet | string lower",
+        &[],
+    );
+    assert_eq!(stdout(&output), "hello big world\n5\nloud quiet\n");
+}
+
+#[test]
+fn bash_function_never_shadows_what_fish_knows() {
+    let runtime = runtime();
+    let output = fish(
+        &runtime,
+        "function gill_mine; echo fish; end
+         __gill_bash -c 'gill_mine() { echo bash; }; printf() { echo bash; }'
+         gill_mine; printf '%s\\n' fish",
+        &[],
+    );
+    assert_eq!(stdout(&output), "fish\nfish\n");
+}
+
+#[test]
+fn removed_bash_function_is_no_longer_callable() {
+    let runtime = runtime();
+    let output = fish(
+        &runtime,
+        "__gill_bash -c 'gill_gone() { :; }'; functions -q gill_gone; and echo defined
+         __gill_bash -c 'unset -f gill_gone'; functions -q gill_gone; or echo removed",
+        &[],
+    );
+    assert_eq!(stdout(&output), "defined\nremoved\n");
+}

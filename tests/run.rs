@@ -66,6 +66,10 @@ fn record(op: &str, name: &str, value: &str) -> (String, String, String) {
     (op.into(), name.into(), value.into())
 }
 
+fn no_commands() -> (String, String, String) {
+    record("commands", "", "")
+}
+
 #[test]
 fn functions_variables_aliases_and_options_survive_between_commands() {
     let runtime = Runtime::new();
@@ -84,7 +88,7 @@ fn exported_value_comes_back_byte_for_byte() {
     runtime.run(r#"export TRICKY=$'a b\nc\\'"'"'$(x)'"#);
     assert_eq!(
         runtime.records(),
-        [record("set", "TRICKY", "a b\nc\\'$(x)")]
+        [record("set", "TRICKY", "a b\nc\\'$(x)"), no_commands()]
     );
 }
 
@@ -98,7 +102,10 @@ fn unset_exported_variable_comes_back_as_erase() {
         .output()
         .unwrap();
     assert!(output.status.success(), "{output:?}");
-    assert_eq!(runtime.records(), [record("erase", "GILL_TEST_VAR", "")]);
+    assert_eq!(
+        runtime.records(),
+        [record("erase", "GILL_TEST_VAR", ""), no_commands()]
+    );
 }
 
 #[test]
@@ -108,15 +115,18 @@ fn directory_change_comes_back_as_cd() {
     runtime.run(&format!("cd '{}'", target.path().display()));
     assert_eq!(
         runtime.records(),
-        [record("cd", "", &target.path().display().to_string())]
+        [
+            record("cd", "", &target.path().display().to_string()),
+            no_commands()
+        ]
     );
 }
 
 #[test]
-fn command_without_changes_leaves_no_records() {
+fn command_without_changes_only_lists_commands() {
     let runtime = Runtime::new();
     runtime.run("true");
-    assert_eq!(runtime.records(), []);
+    assert_eq!(runtime.records(), [no_commands()]);
 }
 
 #[test]
@@ -262,4 +272,26 @@ fn end_removes_the_session() {
         .unwrap();
     assert!(status.success());
     assert!(!runtime.dir.path().join("gill/1").exists());
+}
+
+#[test]
+fn alias_expands_in_argv() {
+    let runtime = Runtime::new();
+    runtime.run("alias gill_hi='echo hi from'");
+    let output = runtime
+        .gill()
+        .args(["run", "--session", "1", "--", "gill_hi", "a b"])
+        .output()
+        .unwrap();
+    assert_eq!(stdout(&output), "hi from a b\n");
+}
+
+#[test]
+fn bash_functions_and_aliases_are_listed_for_fish() {
+    let runtime = Runtime::new();
+    runtime.run("gill_f() { :; }; alias gill_a=:");
+    assert_eq!(
+        runtime.records(),
+        [record("commands", "", "gill_a\ngill_f")]
+    );
 }

@@ -5,12 +5,16 @@
 # `argv COMMAND [ARG...]`. Everything here calls builtins through `builtin`, so
 # functions the user defines with the same names do not change it.
 
-__gill_snapshot=$1 __gill_dir=$2 __gill_mode=$3
-builtin shift 3
-if [[ $__gill_mode == line ]]; then
-    __gill_line=$1
-    builtin set --
+__gill_snapshot=$1 __gill_dir=$2
+if [[ $3 == line ]]; then
+    __gill_line=$4
+else
+    # Quoted by bash itself, so the words reach the command unchanged, while an alias
+    # named by the first word still expands.
+    builtin shift 3
+    builtin printf -v __gill_line '%q ' "$@"
 fi
+builtin set --
 
 builtin shopt -s expand_aliases
 
@@ -64,6 +68,12 @@ __gill_save() {
             builtin printf '%s\0%s\0' "$__gill_name" "${!__gill_name}"
         done < <(builtin compgen -e)
         builtin printf '\0'
+
+        # The functions and aliases fish can call through gill.
+        while IFS= builtin read -r __gill_name; do
+            [[ $__gill_name == __gill_* ]] || builtin printf '%s\0' "$__gill_name"
+        done < <(builtin compgen -A function; builtin compgen -a)
+        builtin printf '\0'
     } >|"$__gill_dir/environ.next"
 
     builtin return "$__gill_status"
@@ -80,12 +90,7 @@ if [[ -f $__gill_snapshot ]]; then
     builtin source -- "$__gill_snapshot"
 fi
 
-if [[ $__gill_mode == line ]]; then
-    [[ -z $__gill_options ]] || builtin set "-$__gill_options"
-    builtin eval -- "$__gill_line"
-else
-    [[ -z $__gill_options ]] || builtin set "-$__gill_options"
-    "$@"
-fi
+[[ -z $__gill_options ]] || builtin set "-$__gill_options"
+builtin eval -- "$__gill_line"
 { __gill_status=$? __gill_flags=$-; builtin set +euvx; } 2>/dev/null
 __gill_save
