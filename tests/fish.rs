@@ -157,6 +157,19 @@ fn bash_function_never_shadows_what_fish_knows() {
 }
 
 #[test]
+fn fish_function_that_replaced_a_bash_one_survives_its_removal() {
+    let runtime = runtime();
+    let output = fish(
+        &runtime,
+        "__gill_bash -c 'gill_taken() { echo bash; }'
+         function gill_taken; echo fish; end
+         __gill_bash -c 'unset -f gill_taken'; gill_taken",
+        &[],
+    );
+    assert_eq!(stdout(&output), "fish\n");
+}
+
+#[test]
 fn removed_bash_function_is_no_longer_callable() {
     let runtime = runtime();
     let output = fish(

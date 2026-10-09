@@ -80,19 +80,28 @@ end
 
 # The functions gill defined so fish can call bash functions and aliases.
 set -g __gill_commands
+set -g __gill_description 'Run the bash function or alias of this name'
+
+# A fish function replaced by the user no longer carries gill's description, and gill
+# must not remove it.
+function __gill_owns --argument-names name
+    functions -q -- $name; and functions -- $name | string match -q -- "*--description '$__gill_description'*"
+end
 
 # Gives each bash function and alias fish does not know itself a fish function that
 # runs that one command in bash, and removes the ones bash no longer has.
 function __gill_define_commands
     for name in $__gill_commands
-        contains -- $name $argv; or functions -e -- $name
+        if not contains -- $name $argv; and __gill_owns $name
+            functions -e -- $name
+        end
     end
     set -l defined
     for name in $argv
         if contains -- $name $__gill_commands
             set -a defined $name
         else if not type -q -- $name
-            function $name --description 'Run the bash function or alias of this name'
+            function $name --description $__gill_description
                 __gill_bash -- (status current-function) $argv
             end
             set -a defined $name
