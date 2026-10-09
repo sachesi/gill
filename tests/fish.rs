@@ -157,6 +157,33 @@ fn bash_function_never_shadows_what_fish_knows() {
 }
 
 #[test]
+fn init_with_bashrc_imports_the_bashrc_functions_into_fish() {
+    let runtime = runtime();
+    let home = tempfile::tempdir().unwrap();
+    fs::write(
+        home.path().join(".bashrc"),
+        "rc_fish_fn() { echo from-bashrc; }\n",
+    )
+    .unwrap();
+    let bin_dir = Path::new(GILL)
+        .parent()
+        .expect("the gill binary is in a directory");
+    let path = std::env::join_paths(std::iter::once(bin_dir.to_path_buf()).chain(
+        std::env::split_paths(&std::env::var_os("PATH").unwrap_or_default()),
+    ))
+    .expect("PATH entries contain no colons");
+    let output = Command::new("fish")
+        .args(["--no-config", "-c"])
+        .arg("gill init fish --bashrc | source; __gill_bash -c true; rc_fish_fn")
+        .env("PATH", path)
+        .env("XDG_RUNTIME_DIR", runtime.path())
+        .env("HOME", home.path())
+        .output()
+        .expect("fish is installed");
+    assert_eq!(stdout(&output), "from-bashrc\n");
+}
+
+#[test]
 fn fish_function_that_replaced_a_bash_one_survives_its_removal() {
     let runtime = runtime();
     let output = fish(

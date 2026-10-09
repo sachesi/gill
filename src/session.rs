@@ -13,6 +13,7 @@ const SNAPSHOT: &str = "snapshot";
 const NEXT_SNAPSHOT: &str = "snapshot.next";
 const ENVIRON: &str = "environ.next";
 const RECORDS: &str = "records";
+const SEEN_BASHRC: &str = "bashrc.seen";
 
 #[derive(Debug)]
 pub struct Session {
@@ -78,6 +79,21 @@ impl Session {
 
     pub fn discard_snapshot(&self) -> Result<()> {
         remove_if_present(&self.dir.join(NEXT_SNAPSHOT))
+    }
+
+    /// The `~/.bashrc` content this session last sourced, if it has sourced one.
+    pub fn seen_bashrc(&self) -> Result<Option<Vec<u8>>> {
+        let path = self.dir.join(SEEN_BASHRC);
+        match fs::read(&path) {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(err) if err.kind() == ErrorKind::NotFound => Ok(None),
+            Err(err) => Err(err).with_context(|| format!("reading {}", path.display())),
+        }
+    }
+
+    pub fn write_seen_bashrc(&self, bytes: &[u8]) -> Result<()> {
+        let path = self.dir.join(SEEN_BASHRC);
+        fs::write(&path, bytes).with_context(|| format!("writing {}", path.display()))
     }
 
     pub fn write_records(&self, bytes: &[u8]) -> Result<()> {

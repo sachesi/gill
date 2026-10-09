@@ -1,17 +1,18 @@
 # Runs one command for gill in a fresh, non-interactive bash: restore the state the
 # previous command saved, run the command at top level, save the state again.
 #
-# Arguments: the snapshot to restore, the directory to save into, then `line LINE` or
-# `argv COMMAND [ARG...]`. Everything here calls builtins through `builtin`, so
-# functions the user defines with the same names do not change it.
+# Arguments: the snapshot to restore, the directory to save into, the bashrc to source
+# before the command or an empty word, the variable names fish takes (space-separated),
+# then `line LINE` or `argv COMMAND [ARG...]`. Everything here calls builtins through
+# `builtin`, so functions the user defines with the same names do not change it.
 
-__gill_snapshot=$1 __gill_dir=$2
-if [[ $3 == line ]]; then
-    __gill_line=$4
+__gill_snapshot=$1 __gill_dir=$2 __gill_bashrc=$3 __gill_import_names=" $4 "
+if [[ $5 == line ]]; then
+    __gill_line=$6
 else
     # Quoted by bash itself, so the words reach the command unchanged, while an alias
     # named by the first word still expands.
-    builtin shift 3
+    builtin shift 5
     builtin printf -v __gill_line '%q ' "$@"
 fi
 builtin set --
@@ -89,6 +90,32 @@ __gill_options=
 if [[ -f $__gill_snapshot ]]; then
     builtin source -- "$__gill_snapshot"
 fi
+
+# Before the options are restored, so an errexit from the snapshot cannot stop the import.
+if [[ -n $__gill_bashrc ]]; then
+    builtin declare -A __gill_before
+    while IFS= builtin read -r __gill_name; do
+        __gill_before[$__gill_name]=${!__gill_name}
+    done < <(builtin compgen -e)
+
+    builtin source -- "$__gill_bashrc"
+
+    # Exports from bashrc stay on the bash side only, and variables fish exported keep
+    # fish's values. Named variables are the exception.
+    for __gill_name in "${!__gill_before[@]}"; do
+        [[ $__gill_import_names == *" $__gill_name "* ]] && continue
+        builtin printf -v "$__gill_name" '%s' "${__gill_before[$__gill_name]}"
+        builtin export -- "$__gill_name"
+    done
+    while IFS= builtin read -r __gill_name; do
+        [[ $__gill_import_names == *" $__gill_name "* || -v __gill_before[$__gill_name] ]] && continue
+        builtin export -n -- "$__gill_name"
+    done < <(builtin compgen -e)
+fi
+
+for __gill_name in $__gill_import_names; do
+    [[ -v "$__gill_name" ]] && builtin export -- "$__gill_name"
+done
 
 [[ -z $__gill_options ]] || builtin set "-$__gill_options"
 builtin eval -- "$__gill_line"

@@ -12,6 +12,7 @@ use tempfile::TempDir;
 struct Runtime {
     dir: TempDir,
     cwd: TempDir,
+    home: TempDir,
 }
 
 impl Runtime {
@@ -22,7 +23,12 @@ impl Runtime {
         Self {
             dir,
             cwd: tempfile::tempdir().expect("a temporary directory can be created"),
+            home: tempfile::tempdir().expect("a temporary directory can be created"),
         }
+    }
+
+    fn write_bashrc(&self, content: &str) {
+        fs::write(self.home.path().join(".bashrc"), content).expect("the home directory is ours");
     }
 
     fn gill(&self) -> Command {
@@ -30,6 +36,7 @@ impl Runtime {
         command
             .env("XDG_RUNTIME_DIR", self.dir.path())
             .env("PWD", self.cwd.path())
+            .env("HOME", self.home.path())
             .current_dir(self.cwd.path());
         command
     }
@@ -294,4 +301,84 @@ fn bash_functions_and_aliases_are_listed_for_fish() {
         runtime.records(),
         [record("commands", "", "gill_a\ngill_f")]
     );
+}
+
+fn run_with_bashrc(runtime: &Runtime, line: &str) -> Output {
+    runtime
+        .gill()
+        .args(["run", "--bashrc", "--session", "1", "-c", line])
+        .output()
+        .expect("gill was built")
+}
+
+#[test]
+fn bashrc_functions_and_aliases_are_available_when_imported() {
+    let runtime = Runtime::new();
+    runtime.write_bashrc("rc_greet() { echo from-rc; }\nalias rc_alias='echo aliased'\n");
+    let output = run_with_bashrc(&runtime, "rc_greet; rc_alias");
+    assert_eq!(stdout(&output), "from-rc\naliased\n");
+}
+
+#[test]
+fn bashrc_is_sourced_again_only_when_its_content_changes() {
+    let runtime = Runtime::new();
+    let log = runtime.cwd.path().join("log");
+    runtime.write_bashrc(&format!("echo sourced >> {}\n", log.display()));
+    run_with_bashrc(&runtime, "true");
+    run_with_bashrc(&runtime, "true");
+    assert_eq!(fs::read_to_string(&log).unwrap(), "sourced\n");
+
+    runtime.write_bashrc(&format!("echo sourced again >> {}\n", log.display()));
+    run_with_bashrc(&runtime, "true");
+    assert_eq!(
+        fs::read_to_string(&log).unwrap(),
+        "sourced\nsourced again\n"
+    );
+}
+
+#[test]
+fn bashrc_exports_stay_out_of_fish_and_bash_env() {
+    let runtime = Runtime::new();
+    runtime.write_bashrc("export RC_EXPORT=1 PATH=/rc:$PATH\n");
+    let output = run_with_bashrc(
+        &runtime,
+        "echo ${RC_EXPORT:-unset}; env | grep -c '^RC_EXPORT='; case $PATH in /rc:*) echo rc;; *) echo kept;; esac",
+    );
+    assert_eq!(stdout(&output), "1\n0\nkept\n");
+    assert!(
+        !runtime
+            .records()
+            .iter()
+            .any(|(op, name, _)| op == "set" && (name == "RC_EXPORT" || name == "PATH"))
+    );
+}
+
+#[test]
+fn named_variable_from_bashrc_reaches_fish() {
+    let runtime = Runtime::new();
+    runtime.write_bashrc("IMPORTED=yes\nHIDDEN=no\n");
+    let output = runtime
+        .gill()
+        .env("GILL_BASHRC", "1")
+        .env("GILL_IMPORT_VARS", "IMPORTED")
+        .args(["run", "--session", "1", "-c", "true"])
+        .output()
+        .expect("gill was built");
+    assert!(output.status.success(), "{output:?}");
+    let records = runtime.records();
+    assert!(records.contains(&record("set", "IMPORTED", "yes")));
+    assert!(!records.iter().any(|(_, name, _)| name == "HIDDEN"));
+}
+
+#[test]
+fn import_name_fish_manages_is_refused() {
+    let runtime = Runtime::new();
+    let output = runtime
+        .gill()
+        .env("GILL_IMPORT_VARS", "PWD")
+        .args(["run", "--session", "1", "-c", "true"])
+        .output()
+        .expect("gill was built");
+    assert_eq!(output.status.code(), Some(125));
+    assert!(String::from_utf8_lossy(&output.stderr).contains("PWD"));
 }

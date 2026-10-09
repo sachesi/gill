@@ -47,7 +47,7 @@ end
 # Runs a command in bash and applies what it changed. Takes gill run's arguments:
 # `-c LINE` or `-- COMMAND [ARG...]`.
 function __gill_bash
-    command gill run --session $__gill_session $argv
+    command gill run $__gill_run_options --session $__gill_session $argv
     set -l run_status $status
     __gill_apply
     return $run_status

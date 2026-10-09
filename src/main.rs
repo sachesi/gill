@@ -3,6 +3,7 @@ mod record;
 mod run;
 mod session;
 
+use std::env::VarError;
 use std::ffi::OsString;
 use std::io::{self, Write};
 use std::process::ExitCode;
@@ -10,15 +11,15 @@ use std::process::ExitCode;
 use anyhow::{Context, Result, bail};
 use tracing_subscriber::EnvFilter;
 
-use crate::run::Command;
+use crate::run::{Command, Imports};
 use crate::session::Session;
 
 const FISH_INIT: &str = include_str!("../shell/gill.fish");
 
 const USAGE: &str = "\
-usage: gill init fish
-       gill run --session ID -c LINE
-       gill run --session ID -- COMMAND [ARG...]
+usage: gill init fish [--bashrc]
+       gill run [--bashrc] --session ID -c LINE
+       gill run [--bashrc] --session ID -- COMMAND [ARG...]
        gill end --session ID
 ";
 
@@ -48,15 +49,27 @@ fn dispatch(args: Vec<OsString>) -> Result<u8> {
     };
     match subcommand.to_str() {
         Some("init") => {
-            if args.next().as_deref() != Some("fish".as_ref()) || args.next().is_some() {
-                bail!("only fish is supported\n{USAGE}");
+            let bashrc = match args.as_slice() {
+                [fish] if fish == "fish" => false,
+                [fish, flag] if fish == "fish" && flag == "--bashrc" => true,
+                _ => bail!("only fish is supported, with an optional --bashrc\n{USAGE}"),
+            };
+            let mut stdout = io::stdout();
+            if bashrc {
+                stdout
+                    .write_all(b"set -g __gill_run_options --bashrc\n")
+                    .context("writing the fish integration")?;
             }
-            io::stdout()
+            stdout
                 .write_all(FISH_INIT.as_bytes())
                 .context("writing the fish integration")?;
             Ok(0)
         }
         Some("run") => {
+            let bashrc_flag = args.as_slice().first().is_some_and(|arg| arg == "--bashrc");
+            if bashrc_flag {
+                args.next();
+            }
             let session = Session::open(&session_id(&mut args)?)?;
             let rest: Vec<OsString> = args.collect();
             let command = match rest.split_first() {
@@ -64,7 +77,7 @@ fn dispatch(args: Vec<OsString>) -> Result<u8> {
                 Some((flag, words)) if flag == "--" && !words.is_empty() => Command::Argv(words),
                 _ => bail!("expected -c LINE or -- COMMAND\n{USAGE}"),
             };
-            run::run(&session, &command)
+            run::run(&session, &command, &imports(bashrc_flag)?)
         }
         Some("end") => {
             let id = session_id(&mut args)?;
@@ -83,6 +96,20 @@ fn dispatch(args: Vec<OsString>) -> Result<u8> {
             subcommand.to_string_lossy()
         ),
     }
+}
+
+/// Imports from the flag and the environment: `GILL_BASHRC=1` turns the bashrc import
+/// on, and `GILL_IMPORT_VARS` names the variables fish takes from bash.
+fn imports(bashrc_flag: bool) -> Result<Imports> {
+    let names = match std::env::var("GILL_IMPORT_VARS") {
+        Ok(list) => record::import_names(&list)?,
+        Err(VarError::NotPresent) => Vec::new(),
+        Err(err) => bail!("GILL_IMPORT_VARS: {err}"),
+    };
+    Ok(Imports {
+        bashrc: bashrc_flag || std::env::var_os("GILL_BASHRC").is_some_and(|value| value == "1"),
+        names,
+    })
 }
 
 fn session_id(args: &mut impl Iterator<Item = OsString>) -> Result<String> {

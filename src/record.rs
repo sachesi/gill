@@ -5,6 +5,8 @@ use std::collections::BTreeMap;
 use std::ffi::{OsStr, OsString};
 use std::os::unix::ffi::OsStrExt;
 
+use anyhow::{Result, ensure};
+
 use crate::dump::Dump;
 
 /// Variables bash or fish manage themselves. Copying them across would fight the shell
@@ -92,6 +94,20 @@ pub fn encode(records: &[Record]) -> Vec<u8> {
         }
     }
     bytes
+}
+
+/// The variables named in `GILL_IMPORT_VARS`, which fish takes from bash even when bash
+/// does not export them. A name fish would not take from bash is refused.
+pub fn import_names(list: &str) -> Result<Vec<OsString>> {
+    list.split_ascii_whitespace()
+        .map(|name| {
+            ensure!(
+                is_synced(OsStr::new(name)),
+                "GILL_IMPORT_VARS names {name}, which fish does not take from bash"
+            );
+            Ok(OsString::from(name))
+        })
+        .collect()
 }
 
 /// Whether fish may set or erase a variable of this name: a valid fish variable name
