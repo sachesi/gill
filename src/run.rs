@@ -29,9 +29,9 @@ pub fn run(session: &Session, command: &Command) -> Result<u8> {
 
     // Ctrl-C and Ctrl-\ reach the whole foreground job. gill has to outlive bash to
     // keep its state, as system(3) does; bash gets the default handlers back at exec.
-    let interrupted = Arc::new(AtomicBool::new(false));
+    // The flag is never read: installing a handler is what keeps gill running.
     for signal in [SIGINT, SIGQUIT] {
-        signal_hook::flag::register(signal, Arc::clone(&interrupted))
+        signal_hook::flag::register(signal, Arc::new(AtomicBool::new(false)))
             .context("installing the signal handlers")?;
     }
 
