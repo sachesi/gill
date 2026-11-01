@@ -145,7 +145,10 @@ end
 # User bindings, which switching between default and vi key bindings keeps.
 begin
     for mode in default insert
-        bind -M $mode enter __gill_enter
+        # A terminal delivers Enter as ctrl-j for lines typed ahead while a command runs.
+        for key in enter ctrl-j ctrl-enter
+            bind -M $mode $key __gill_enter
+        end
         bind -M $mode ctrl-alt-b __gill_enter_bash
     end
 end

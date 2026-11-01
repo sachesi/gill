@@ -1,7 +1,8 @@
 # Contributing
 
 A change passes `just check` and `just test` before it is committed; CI runs the same
-two recipes. The tests need bash and fish installed, and run both for real.
+two recipes. The tests need bash, fish and tmux installed. They run both shells for
+real, and tmux gives `tests/terminal.rs` a terminal to type at an interactive fish in.
 
 ## Where things are
 
