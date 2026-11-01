@@ -1,0 +1,23 @@
+Source: gill
+Section: shells
+Priority: optional
+Maintainer: sachesi <xsachesi@pm.me>
+Build-Depends: debhelper-compat (= 13),
+               cargo,
+               rustc (>= 1.88)
+Standards-Version: 4.7.2
+Homepage: https://github.com/sachesi/gill
+Rules-Requires-Root: no
+
+Package: gill
+Architecture: any
+Depends: ${shlibs:Depends},
+         ${misc:Depends},
+         bash (>= 5.0),
+         fish (>= 4.0)
+Description: Run the bash lines fish cannot, and keep bash's state between them
+ gill sends a line typed at the fish prompt to bash when fish cannot run it, such
+ as a bash loop or an assignment. Exported variables and the working directory
+ come back into fish, and bash's variables, functions, aliases and options last
+ from one line to the next. Nothing changes until a user loads it from their fish
+ configuration.
