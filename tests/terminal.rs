@@ -204,3 +204,12 @@ fn enter_keeps_the_mode_of_the_default_key_bindings() {
     terminal.enter_line("echo mode-(echo $fish_bind_mode)");
     terminal.wait_for("mode-default");
 }
+
+#[test]
+fn up_arrow_recalls_the_bash_line_as_typed() {
+    let terminal = Terminal::new();
+    terminal.enter_line("for gill_x in 1; do echo bash-$((40 + 2)); done");
+    terminal.wait_for("bash-42");
+    terminal.press("Up");
+    terminal.wait_for("> for gill_x in 1");
+}

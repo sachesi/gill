@@ -126,6 +126,9 @@ function __gill_define_commands
 end
 
 function __gill_run_line
+    # Fish keeps a space-prefixed line for one recall with the up arrow. Recall has to
+    # find the line as typed.
+    history delete --exact --case-sensitive -- "$__gill_wrapper"
     __gill_bash -c $__gill_line
 end
 
@@ -136,7 +139,8 @@ function __gill_submit --argument-names line
     history append -- $line
     set -g __gill_line $line
     set -l shown (string replace -a \n \n'# ' -- $line | string collect)
-    commandline -r -- " __gill_run_line # $shown"
+    set -g __gill_wrapper " __gill_run_line # $shown"
+    commandline -r -- $__gill_wrapper
     commandline -f execute
 end
 

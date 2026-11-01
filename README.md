@@ -68,9 +68,6 @@ Each bash line runs in a fresh bash that restores the state the previous line le
 background jobs, traps and coprocesses end with the line that started them. A bash line
 cannot call fish functions. Variables flow back to fish only if they are exported.
 
-If you define your own `fish_should_add_to_history`, it decides about the
-`__gill_run_line` lines too.
-
 ## License
 
 gill is free software under the GNU General Public License, version 3 or later. See
