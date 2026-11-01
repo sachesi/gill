@@ -143,10 +143,11 @@ fn bash_builtin_wrappers_keep_their_state() {
     let output = fish(
         &runtime,
         "declare -A map; __gill_bash -c 'map[k]=v; echo \"${map[k]}\"'
-         set -gx LEAVING 1; unset LEAVING; set -q LEAVING; or echo unset",
+         set -gx LEAVING 1; unset LEAVING; set -q LEAVING; or echo unset
+         typeset gill_t=3; let 'gill_l = 1 + 1'; __gill_bash -c 'echo \"$gill_t$gill_l\"'",
         &[],
     );
-    assert_eq!(stdout(&output), "v\nunset\n");
+    assert_eq!(stdout(&output), "v\nunset\n32\n");
 }
 
 #[test]

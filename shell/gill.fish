@@ -236,3 +236,11 @@ end
 function readonly --description 'Run bash readonly and keep the result'
     __gill_bash -- readonly $argv
 end
+
+function typeset --description 'Run bash typeset and keep the result'
+    __gill_bash -- typeset $argv
+end
+
+function let --description 'Run bash let and keep the result'
+    __gill_bash -- let $argv
+end

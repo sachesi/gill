@@ -33,8 +33,8 @@ Everything else runs in fish unchanged. Ctrl-Alt-B sends the current line to bas
 whatever it contains. A line that fails at runtime in fish is never run a second time in
 bash.
 
-fish has no `unset`, `declare`, `shopt`, `local` or `readonly`. gill defines them as
-functions that run the bash builtin and keep its result.
+fish has no `unset`, `declare`, `typeset`, `shopt`, `local`, `readonly` or `let`. gill
+defines them as functions that run the bash builtin and keep its result.
 
 After each bash line, every bash function and alias whose name fish does not already
 know gets a fish function of the same name. It runs that one command in bash with the
