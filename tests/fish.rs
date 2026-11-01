@@ -63,8 +63,24 @@ fn bash_only_lines_route_to_bash() {
         "[[ -f x ]] && echo y",
         "source venv/bin/activate",
         ". ./env.sh",
+        "cat <<EOF\nbody\nEOF",
     ] {
         assert!(routes_to_bash(&runtime, line), "{line}");
+    }
+}
+
+#[test]
+fn lines_bash_needs_more_of_wait_for_the_next_line() {
+    let runtime = runtime();
+    for line in [
+        "f() {",
+        "case x in",
+        "echo ${HOME",
+        "cat <<EOF",
+        "cat <<EOF\nbody",
+    ] {
+        let output = fish(&runtime, "__gill_verdict $argv[1]", &[line]);
+        assert_eq!(output.status.code(), Some(2), "{line}");
     }
 }
 

@@ -160,3 +160,24 @@ fn ctrl_j_routes_like_enter() {
     terminal.press("C-j");
     terminal.wait_for("bash-42");
 }
+
+#[test]
+fn function_typed_over_several_lines_is_defined() {
+    let terminal = Terminal::new();
+    terminal.enter_line("gill_f() {");
+    terminal.enter_line("echo called-$((40 + 2))");
+    terminal.enter_line("}");
+    terminal.enter_line("gill_f");
+    let screen = terminal.wait_for("called-42");
+    assert!(!screen.contains("syntax error"), "{screen}");
+}
+
+#[test]
+fn here_document_body_stays_out_of_fish() {
+    let terminal = Terminal::new();
+    terminal.enter_line("cat <<EOF");
+    terminal.enter_line("doc-body-$((40 + 2))");
+    terminal.enter_line("EOF");
+    let screen = terminal.wait_for("doc-body-42");
+    assert!(!screen.contains("wanted `EOF'"), "{screen}");
+}

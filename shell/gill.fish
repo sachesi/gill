@@ -7,7 +7,20 @@
 
 set -g __gill_session $fish_pid-(random 1 2147483647)
 
-# Returns 0 when the line belongs to bash. Both parsers decide; nothing is guessed.
+# What bash's parser makes of the line: 0 complete, 1 an error, 2 it needs more lines.
+# Bash has no status for "needs more", and an open here-document even parses cleanly with
+# a warning, so its messages have to be read, in a fixed locale.
+function __gill_bash_parse --argument-names line
+    set -l messages (LC_ALL=C command bash --noprofile --norc -O extglob -n -c $line 2>&1)
+    set -l parse_status $status
+    string match -qr 'here-document at line|unexpected end of file|unexpected EOF' -- $messages
+    and return 2
+    test $parse_status -eq 0; and return 0
+    return 1
+end
+
+# Decides where the line goes: 0 bash, 1 fish, 2 neither yet, because fish rejects it and
+# bash needs more lines. Both parsers decide; nothing is guessed.
 function __gill_verdict --argument-names line
     # A continuation backslash makes fish wait for the next line. Bash would read it as
     # a literal backslash, and fish's parser calls it an error.
@@ -18,12 +31,14 @@ function __gill_verdict --argument-names line
     commandline --input=$line --is-valid
     switch $status
         case 1
+            __gill_bash_parse $line
+            test $status -eq 2; and return 2
             return 0
         case 2
             # Bash reads these fish block openers as ordinary commands.
             string match -qr '^\s*(begin|switch)(\s|;|$)' -- $line
             and return 1
-            command bash --noprofile --norc -O extglob -n -c $line 2>/dev/null
+            __gill_bash_parse $line
             return
     end
 
@@ -127,12 +142,19 @@ end
 
 function __gill_enter
     set -l line (commandline | string collect)
-    if not commandline --paging-mode; and not commandline --search-mode
-        and string match -qr '\S' -- $line
-        and __gill_verdict $line
-        __gill_submit $line
-    else
+    if commandline --paging-mode; or commandline --search-mode
+        or not string match -qr '\S' -- $line
         commandline -f execute
+        return
+    end
+    __gill_verdict $line
+    switch $status
+        case 0
+            __gill_submit $line
+        case 2
+            commandline -i \n
+        case '*'
+            commandline -f execute
     end
 end
 

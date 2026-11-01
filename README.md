@@ -24,6 +24,9 @@ Fish decides first. A line goes to bash when:
   starting with `[[`;
 - it starts with `source` or `.` and a file that does not end in `.fish`.
 
+A line fish calls an error while bash still needs more of it, such as `f() {` or
+`cat <<EOF`, gets another line from Enter, and goes to bash once bash can parse it.
+
 Everything else runs in fish unchanged. Ctrl-Alt-B sends the current line to bash
 whatever it contains. A line that fails at runtime in fish is never run a second time in
 bash.
