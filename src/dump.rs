@@ -64,9 +64,14 @@ mod tests {
 
     #[test]
     fn dump_without_variables_or_commands_is_complete() {
-        let dump = Dump::parse(b"/\0\0\0").unwrap();
-        assert!(dump.environ.is_empty());
-        assert!(dump.commands.is_empty());
+        assert_eq!(
+            Dump::parse(b"/\0\0\0").unwrap(),
+            Dump {
+                cwd: "/".into(),
+                environ: Vec::new(),
+                commands: Vec::new(),
+            }
+        );
     }
 
     #[test]
