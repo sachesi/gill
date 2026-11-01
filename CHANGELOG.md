@@ -5,6 +5,8 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.1.0] - 2026-11-01
+
 ### Added
 
 - Pressing Enter on a line fish cannot run, such as a bash loop, a `FOO=bar` assignment,
@@ -17,3 +19,5 @@ follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   prompt.
 - `gill init fish --bashrc` imports the functions and aliases of `~/.bashrc`, and
   `GILL_IMPORT_VARS` names the variables fish takes from bash.
+- Packages for Fedora, openSUSE, Debian, Ubuntu and Arch Linux. Installing one changes
+  nothing until you load gill from your fish configuration.
