@@ -67,8 +67,9 @@ Then load gill from `~/.config/fish/config.fish`:
 ## What does not carry over
 
 Each bash line runs in a fresh bash that restores the state the previous line left, so
-background jobs, traps and coprocesses end with the line that started them. A bash line
-cannot call fish functions. Variables flow back to fish only if they are exported.
+traps and coprocesses end with the line that started them. A background job keeps
+running, but the next bash line cannot `wait` for it or bring it back with `fg`. A bash
+line cannot call fish functions. Variables flow back to fish only if they are exported.
 
 ## License
 
