@@ -59,8 +59,10 @@ impl Runtime {
             .map(|field| String::from_utf8(field.to_vec()).expect("records are UTF-8"))
             .collect();
         fields
-            .chunks_exact(3)
-            .map(|triple| (triple[0].clone(), triple[1].clone(), triple[2].clone()))
+            .as_chunks::<3>()
+            .0
+            .iter()
+            .map(|[op, name, value]| (op.clone(), name.clone(), value.clone()))
             .collect()
     }
 }
