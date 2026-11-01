@@ -64,6 +64,19 @@ Then load gill from `~/.config/fish/config.fish`:
         gill init fish | source
     end
 
+## Loading ~/.bashrc
+
+gill leaves `~/.bashrc` alone by default. With `gill init fish --bashrc`, or
+`GILL_BASHRC=1` in the environment, it sources the file before the next bash line, once
+per fish session and again when the content changes. Its functions, aliases and options
+become available to bash lines and to fish. Its exports stay out of fish, so your fish
+config keeps control of `PATH`. `GILL_IMPORT_VARS`, a space-separated list, names the
+variables fish takes from bash all the same.
+
+The file runs in a non-interactive bash. One that returns early there, for example with
+`[[ $- == *i* ]] || return` at the top, defines nothing, and gill prints a warning when
+bash ends up with no functions or aliases.
+
 ## What does not carry over
 
 Each bash line runs in a fresh bash that restores the state the previous line left, so
