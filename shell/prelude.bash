@@ -63,8 +63,12 @@ __gill_save() {
         builtin printf '__gill_options=%s\n' "${__gill_flags//[!euvx]/}"
     } >|"$__gill_dir/snapshot.next" || builtin return "$__gill_status"
 
+    # An assignment to PWD does not move the shell.
+    builtin local __gill_cwd=$PWD
+    [[ $PWD -ef . ]] || __gill_cwd=$(builtin pwd -P 2>/dev/null) || __gill_cwd=$PWD
+
     {
-        builtin printf '%s\0' "$PWD"
+        builtin printf '%s\0' "$__gill_cwd"
         while IFS= builtin read -r __gill_name; do
             [[ ${!__gill_name@a} == *x* && -v $__gill_name ]] || continue
             # Bash never puts arrays in the environment.

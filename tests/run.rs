@@ -130,6 +130,13 @@ fn directory_change_comes_back_as_cd() {
 }
 
 #[test]
+fn assignment_to_pwd_does_not_move_fish() {
+    let runtime = Runtime::new();
+    runtime.run("PWD=/; export PWD; true");
+    assert_eq!(runtime.records(), [no_commands()]);
+}
+
+#[test]
 fn errors_count_lines_from_the_command() {
     let runtime = Runtime::new();
     let output = runtime.run("true\ngill_no_such_command");
