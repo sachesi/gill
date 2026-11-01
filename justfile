@@ -14,9 +14,11 @@ destdir := env("DESTDIR", "")
 bindir := destdir + prefix + "/bin"
 release := "target/release"
 
+# List the recipes.
 default:
     @just --list
 
+# Build the release binary.
 build:
     cargo build --release --locked
 
@@ -31,6 +33,7 @@ check:
     bash -n shell/prelude.bash
     fish --no-config --no-execute shell/gill.fish
 
+# Run the tests.
 test:
     cargo test --locked
 
@@ -43,5 +46,6 @@ install:
     @test -x {{release}}/{{crate}} || { echo "error: {{release}}/{{crate}} missing; run 'just build' first" >&2; exit 1; }
     install -Dm755 {{release}}/{{crate}} {{bindir}}/{{crate}}
 
+# Remove the installed binary.
 uninstall:
     rm -f {{bindir}}/{{crate}}
