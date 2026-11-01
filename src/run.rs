@@ -16,6 +16,13 @@ use crate::session::Session;
 
 const PRELUDE: &str = include_str!("../shell/prelude.bash");
 
+/// The one line bash runs. The command is evaluated on line 1 for the sake of the line
+/// numbers in its error messages.
+const RUN: &str = concat!(
+    r#"builtin eval -- "$1"; builtin eval -- "$__gill_line"; "#,
+    r#"{ __gill_status=$? __gill_flags=$-; builtin set +euvx; } 2>/dev/null; __gill_save"#,
+);
+
 /// What the bash side brings across besides the command itself.
 #[derive(Debug, Default)]
 pub struct Imports {
@@ -54,7 +61,7 @@ pub fn run(session: &Session, command: &Command, imports: &Imports) -> Result<u8
     }
 
     let mut bash = process::Command::new("bash");
-    bash.args(["--noprofile", "--norc", "-c", PRELUDE, "bash"])
+    bash.args(["--noprofile", "--norc", "-c", RUN, "bash", PRELUDE])
         .arg(session.snapshot())
         .arg(session.dir())
         .arg(

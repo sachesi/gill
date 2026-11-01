@@ -130,6 +130,14 @@ fn directory_change_comes_back_as_cd() {
 }
 
 #[test]
+fn errors_count_lines_from_the_command() {
+    let runtime = Runtime::new();
+    let output = runtime.run("true\ngill_no_such_command");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(stderr.contains("line 2: gill_no_such_command"), "{stderr}");
+}
+
+#[test]
 fn command_without_changes_only_lists_commands() {
     let runtime = Runtime::new();
     runtime.run("true");

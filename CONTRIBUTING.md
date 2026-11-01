@@ -11,7 +11,8 @@ real, and tmux gives `tests/terminal.rs` a terminal to type at an interactive fi
 - `src/dump.rs` reads what bash writes after the command: its directory, environment
   and the names of its functions and aliases. `src/record.rs` diffs that against fish's
   environment and encodes the changes fish applies.
-- `shell/prelude.bash` is the bash side: restore the snapshot, run the command, save.
+- `shell/prelude.bash` is the bash side: restore the snapshot and define the save. The
+  `RUN` line in `src/run.rs` evaluates it, runs the command, then saves.
 - `shell/gill.fish` is what `gill init fish` prints: routing, the Enter binding, the
   function that applies the records, and the fish functions standing in for bash ones.
 

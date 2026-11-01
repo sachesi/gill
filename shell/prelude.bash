@@ -1,11 +1,14 @@
-# Runs one command for gill in a fresh, non-interactive bash: restore the state the
-# previous command saved, run the command at top level, save the state again.
+# Sets up one command for gill in a fresh, non-interactive bash: restore the state the
+# previous command saved and prepare to save it again. RUN in src/run.rs evaluates this
+# text and then runs the command at top level.
 #
 # Arguments: the snapshot to restore, the directory to save into, the bashrc to source
 # before the command or an empty word, the variable names fish takes (space-separated),
 # then `line LINE` or `argv COMMAND [ARG...]`. Everything here calls builtins through
 # `builtin`, so functions the user defines with the same names do not change it.
 
+# RUN's first argument is this text.
+builtin shift
 __gill_snapshot=$1 __gill_dir=$2 __gill_bashrc=$3 __gill_import_names=" $4 "
 if [[ $5 == line ]]; then
     __gill_line=$6
@@ -80,8 +83,8 @@ __gill_save() {
     builtin return "$__gill_status"
 }
 
-# Both the trap, which covers `exit`, and the end of this script, which covers a
-# command that replaced the trap, save the same way: record `$?` and the options while
+# Both the trap, which covers `exit`, and the end of RUN, which covers a command that
+# replaced the trap, save the same way: record `$?` and the options while
 # they are still the command's, silently, then turn off the options that would trace
 # the save or end it early.
 builtin trap -- '{ __gill_status=$? __gill_flags=$-; builtin set +euvx; } 2>/dev/null; __gill_save' EXIT
@@ -118,6 +121,3 @@ for __gill_name in $__gill_import_names; do
 done
 
 [[ -z $__gill_options ]] || builtin set "-$__gill_options"
-builtin eval -- "$__gill_line"
-{ __gill_status=$? __gill_flags=$-; builtin set +euvx; } 2>/dev/null
-__gill_save
