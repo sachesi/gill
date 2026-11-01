@@ -140,7 +140,18 @@ function __gill_submit --argument-names line
     commandline -f execute
 end
 
+# Enter in vi normal mode returns to insert mode. The mode is set here because `bind -m`
+# would apply to the single `default` mode of the other key bindings too.
+function __gill_leave_normal_mode
+    if test "$fish_bind_mode" = default
+        and contains -- "$fish_key_bindings" fish_vi_key_bindings fish_hybrid_key_bindings
+        set -g fish_bind_mode insert
+        commandline -f repaint-mode
+    end
+end
+
 function __gill_enter
+    __gill_leave_normal_mode
     set -l line (commandline | string collect)
     if commandline --paging-mode; or commandline --search-mode
         or not string match -qr '\S' -- $line
@@ -159,6 +170,7 @@ function __gill_enter
 end
 
 function __gill_enter_bash
+    __gill_leave_normal_mode
     set -l line (commandline | string collect)
     string match -qr '\S' -- $line
     and __gill_submit $line

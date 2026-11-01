@@ -181,3 +181,26 @@ fn here_document_body_stays_out_of_fish() {
     let screen = terminal.wait_for("doc-body-42");
     assert!(!screen.contains("wanted `EOF'"), "{screen}");
 }
+
+#[test]
+fn enter_in_vi_normal_mode_returns_to_insert_mode() {
+    let terminal = Terminal::new();
+    terminal.enter_line("fish_vi_key_bindings");
+    terminal.wait_for("[I]");
+    terminal.type_text("echo bash-$((40 + 2))");
+    terminal.press("Escape");
+    terminal.wait_for("[N]");
+    terminal.press("Enter");
+    terminal.wait_for("bash-42");
+    terminal.enter_line("echo mode-(echo $fish_bind_mode)");
+    terminal.wait_for("mode-insert");
+}
+
+#[test]
+fn enter_keeps_the_mode_of_the_default_key_bindings() {
+    let terminal = Terminal::new();
+    terminal.enter_line("echo bash-$((40 + 2))");
+    terminal.wait_for("bash-42");
+    terminal.enter_line("echo mode-(echo $fish_bind_mode)");
+    terminal.wait_for("mode-default");
+}
