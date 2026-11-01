@@ -107,6 +107,16 @@ if [[ -n $__gill_bashrc ]]; then
 
     builtin source -- "$__gill_bashrc"
 
+    # A file that returns early when `$-` lacks `i` leaves nothing behind. Bash stays
+    # non-interactive anyway: past such a guard, a file may start another shell.
+    __gill_defined=
+    while IFS= builtin read -r __gill_name; do
+        [[ $__gill_name == __gill_* ]] || __gill_defined=1
+    done < <(builtin compgen -A function; builtin compgen -a)
+    [[ -n $__gill_defined ]] || builtin printf \
+        'gill: %s defined no functions or aliases; it may stop early in a non-interactive shell\n' \
+        "$__gill_bashrc" >&2
+
     # Exports from bashrc stay on the bash side only, and variables fish exported keep
     # fish's values. Named variables are the exception.
     for __gill_name in "${!__gill_before[@]}"; do

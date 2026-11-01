@@ -335,6 +335,26 @@ fn bashrc_functions_and_aliases_are_available_when_imported() {
 }
 
 #[test]
+fn bashrc_that_stops_early_is_reported() {
+    let runtime = Runtime::new();
+    runtime.write_bashrc("[[ $- == *i* ]] || return\nrc_greet() { :; }\n");
+    let output = run_with_bashrc(&runtime, "true");
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    assert!(
+        stderr.contains("defined no functions or aliases"),
+        "{stderr}"
+    );
+}
+
+#[test]
+fn bashrc_with_functions_imports_silently() {
+    let runtime = Runtime::new();
+    runtime.write_bashrc("rc_greet() { :; }\n");
+    let output = run_with_bashrc(&runtime, "true");
+    assert_eq!(String::from_utf8_lossy(&output.stderr), "");
+}
+
+#[test]
 fn bashrc_is_sourced_again_only_when_its_content_changes() {
     let runtime = Runtime::new();
     let log = runtime.cwd.path().join("log");
