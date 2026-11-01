@@ -19,6 +19,26 @@ function __gill_bash_parse --argument-names line
     return 1
 end
 
+# Returns 0 when a statement of the line assigns to an array element or appends to a
+# variable, which fish reads as a command it can never find. Fish's tokenizer splits off
+# the statements from the end, so quotes and comments are not looked into.
+function __gill_has_bash_assignment --argument-names line
+    string match -qr '\]\+?=|\+=' -- $line; or return 1
+    set -l rest $line
+    while string match -qr '\S' -- $rest
+        set -l statement (commandline --input=$rest --current-process | string collect)
+        set -l target (string match -r --groups-only '^\s*([A-Za-z_]\w*(?:\[[^]]*\]\+?|\+))=' -- $statement)
+        if set -q target[1]; and not type -q -- "$target="
+            return 0
+        end
+        set -l before (string length -- "$rest")
+        set rest (string sub --length (math $before - (string length -- "$statement")) -- "$rest" | string collect)
+        set rest (string replace -r '[\s;&|]+$' '' -- "$rest" | string collect)
+        test (string length -- "$rest") -lt $before; or return 1
+    end
+    return 1
+end
+
 # Decides where the line goes: 0 bash, 1 fish, 2 neither yet, because fish rejects it and
 # bash needs more lines. Both parsers decide; nothing is guessed.
 function __gill_verdict --argument-names line
@@ -52,6 +72,7 @@ function __gill_verdict --argument-names line
     if string match -qr '^\s*\[\[\s' -- $line; and not type -q -- '[['
         return 0
     end
+    __gill_has_bash_assignment $line; and return 0
     # fish refuses a line with a bare NAME=value anywhere before running any of it,
     # which only its full parser reports.
     string match -q -- '*=*' $line; or return 1

@@ -64,6 +64,12 @@ fn bash_only_lines_route_to_bash() {
         "source venv/bin/activate",
         ". ./env.sh",
         "cat <<EOF\nbody\nEOF",
+        "a[0]=1",
+        "x+=1",
+        "a[1]+=2",
+        "declare -a m; m[0]=1",
+        "echo a | b+=1",
+        "echo a\nx+=1\necho b",
     ] {
         assert!(routes_to_bash(&runtime, line), "{line}");
     }
@@ -103,6 +109,10 @@ fn fish_lines_stay_in_fish() {
         "source conf.fish",
         "source",
         "source -",
+        "echo a[1]=2",
+        "echo x+=1",
+        "echo 'q; x+=1'",
+        "echo hi # ; x+=1",
     ] {
         assert!(!routes_to_bash(&runtime, line), "{line}");
     }

@@ -22,6 +22,8 @@ Fish decides first. A line goes to bash when:
   fish, as does one ending in a continuation backslash;
 - fish would refuse the line before running any of it: a bare `NAME=value`, or a line
   starting with `[[`;
+- it assigns to an array element or appends to a variable, as `a[0]=1` and `x+=1` do,
+  which fish reads as commands it cannot find;
 - it starts with `source` or `.` and a file that does not end in `.fish`.
 
 A line fish calls an error while bash still needs more of it, such as `f() {` or
