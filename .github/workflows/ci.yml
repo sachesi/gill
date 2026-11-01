@@ -84,3 +84,30 @@ jobs:
     uses: $/.github/workflows/release.yml
     permissions:
       contents: write
+
+  aur:
+    name: AUR
+    # After the release, whose job also checks that the tag matches the sources.
+    needs: release
+    uses: $/.github/workflows/aur.yml
+    # AUR_SSH_KEY is in the job's environment, which the caller cannot name a secret from,
+    # and a called workflow sees no secrets, its environment's included, without this.
+    secrets: inherit # zizmor: ignore[secrets-inherit]
+
+  copr:
+    name: Copr
+    # After the release, whose files the build downloads.
+    needs: release
+    uses: $/.github/workflows/copr.yml
+    secrets:
+      COPR_WEBHOOK: ${{ secrets.COPR_WEBHOOK }}
+
+  obs:
+    name: OBS
+    # After the release, whose files the build downloads.
+    needs: release
+    uses: $/.github/workflows/obs.yml
+    permissions:
+      contents: write
+    secrets:
+      OBS_TOKEN: ${{ secrets.OBS_TOKEN }}
